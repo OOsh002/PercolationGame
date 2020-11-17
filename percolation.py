@@ -148,14 +148,23 @@ def PlayBenchmark(p1, p2, iters):
 
 # This is a player that plays a legal move at random.
 class RandomPlayer:
-    # These are "static methdods" - note there's no "self" parameter here.
+    # These are "static methods" - note there's no "self" parameter here.
     # These methods are defined on the blueprint/class definition rather than
     # any particular instance.
     def ChooseVertexToColor(graph, active_player):
         return random.choice([v for v in graph.V if v.color == -1])
 
+        # Initial Strategies: 
+        # 1) Choosing neighbors with the most conections and forming a path between
+        # your own color 
+        # 2) Avoiding any isolated verticies and attempting to force the opponent to choose it
+
     def ChooseVertexToRemove(graph, active_player):
         return random.choice([v for v in graph.V if v.color == active_player])
+
+        # Initial Strategies: 
+        # 1) Erasing down the path instead of the middle of it (making sure that there
+        # are no connections of the same color next to the vertex being erased)
 
 
 if __name__ == "__main__":
