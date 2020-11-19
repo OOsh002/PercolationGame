@@ -3,6 +3,7 @@ import itertools
 import copy
 import traceback
 import sys
+import BestPlayer
 
 
 class Vertex:
@@ -165,7 +166,6 @@ class RandomPlayer:
         # Initial Strategies: 
         # 1) Erasing down the path instead of the middle of it (making sure that there
         # are no connections of the same color next to the vertex being erased)
-
 
 if __name__ == "__main__":
     # NOTE: we are not creating INSTANCES of these classes, we're defining the players
