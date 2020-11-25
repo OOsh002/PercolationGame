@@ -47,11 +47,11 @@ class Graph:
 
     # Returns the degree of the given vertex.
     def Degree(self, v):
-        return len(IncidentEdges(self, v))
+        return len(self.IncidentEdges(v))
 
     # Returns all neighbors of the given vertex.
     def GetNeighbors(self, v):
-        edges = IncidentEdges(self, v)
+        edges = self.IncidentEdges(v)
         return [u for u in self.V if Edge(u, v) in edges or Edge(v, u) in edges]
 
     # Removes the given vertex v from the graph, as well as the edges attached to it.
@@ -179,8 +179,8 @@ if __name__ == "__main__":
     # NOTE: we are not creating INSTANCES of these classes, we're defining the players
     # as the class itself. This lets us call the static methods.
     p1 = RandomPlayer
-    p2 = RandomPlayer
-    iters = 200
+    p2 = BestPlayer.ooshbot69
+    iters = 40
     wins = PlayBenchmark(p1, p2, iters)
     print(wins)
     print(
