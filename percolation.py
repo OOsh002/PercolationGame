@@ -5,7 +5,6 @@ import traceback
 import sys
 import BestPlayer
 
-
 class Vertex:
     def __init__(self, index, color=-1):
         self.index = index
@@ -45,6 +44,15 @@ class Graph:
     # Returns the incident edges on a vertex.
     def IncidentEdges(self, v):
         return [e for e in self.E if (e.a == v or e.b == v)]
+
+    # Returns the degree of the given vertex.
+    def Degree(self, v):
+        return len(IncidentEdges(self, v))
+
+    # Returns all neighbors of the given vertex.
+    def GetNeighbors(self, v):
+        edges = IncidentEdges(self, v)
+        return [u for u in self.V if Edge(u, v) in edges or Edge(v, u) in edges]
 
     # Removes the given vertex v from the graph, as well as the edges attached to it.
     # Removes all isolated vertices from the graph as well.
