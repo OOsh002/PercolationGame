@@ -3,8 +3,11 @@ import itertools
 import copy
 import traceback
 import sys
-import BestPlayer
+import percolator
 
+
+# modified random player class
+# modified the play method to pass in a and b
 class Vertex:
     def __init__(self, index, color=-1):
         self.index = index
@@ -45,15 +48,6 @@ class Graph:
     def IncidentEdges(self, v):
         return [e for e in self.E if (e.a == v or e.b == v)]
 
-    # Returns the degree of the given vertex.
-    def Degree(self, v):
-        return len(self.IncidentEdges(v))
-
-    # Returns all neighbors of the given vertex.
-    def GetNeighbors(self, v):
-        edges = self.IncidentEdges(v)
-        return [u for u in self.V if Edge(u, v) in edges or Edge(v, u) in edges]
-
     # Removes the given vertex v from the graph, as well as the edges attached to it.
     # Removes all isolated vertices from the graph as well.
     def Percolate(self, v):
@@ -68,7 +62,7 @@ class Graph:
 
 
 # This is the main game loop.
-def PlayGraph(s, t, graph):
+def PlayGraph(s, t, graph, a=-3, b=0.5):
     players = [s, t]
     active_player = 0
 
@@ -76,7 +70,7 @@ def PlayGraph(s, t, graph):
     while any(v.color == -1 for v in graph.V):
         # First, try to just *run* the player's code to get their vertex.
         try:
-            chosen_vertex = players[active_player].ChooseVertexToColor(copy.copy(graph), active_player)
+            chosen_vertex = players[active_player].ChooseVertexToColor(copy.copy(graph), active_player, a)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             return 1 - active_player
@@ -105,7 +99,7 @@ def PlayGraph(s, t, graph):
     while len([v for v in graph.V if v.color == active_player]) > 0:
         # First, try to just *run* the removal code.
         try:
-            chosen_vertex = players[active_player].ChooseVertexToRemove(copy.copy(graph), active_player)
+            chosen_vertex = players[active_player].ChooseVertexToRemove(copy.copy(graph), active_player, b)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             return 1 - active_player
@@ -138,9 +132,9 @@ def BinomialRandomGraph(k, p):
 
 
 # This method creates and plays a number of random graphs using both passed in players.
-def PlayBenchmark(p1, p2, iters):
+def PlayBenchmark(p1, p2, iters, a=-3, b=0.5):
     graphs = (
-        BinomialRandomGraph(random.randint(1, 20), random.random())
+        BinomialRandomGraph(random.randint(2, 20), random.random())
         for _ in range(iters)
     )
     wins = [0, 0]
@@ -148,9 +142,9 @@ def PlayBenchmark(p1, p2, iters):
         g1 = copy.deepcopy(graph)
         g2 = copy.deepcopy(graph)
         # Each player gets a chance to go first on each graph.
-        winner_a = PlayGraph(p1, p2, g1)
+        winner_a = PlayGraph(p1, p2, g1, a, b)
         wins[winner_a] += 1
-        winner_b = PlayGraph(p2, p1, g2)
+        winner_b = PlayGraph(p2, p1, g2, a, b)
         wins[1-winner_b] += 1
     return wins
 
@@ -160,7 +154,7 @@ class RandomPlayer:
     # These are "static methods" - note there's no "self" parameter here.
     # These methods are defined on the blueprint/class definition rather than
     # any particular instance.
-    def ChooseVertexToColor(graph, active_player):
+    def ChooseVertexToColor(graph, active_player, a=0):
         return random.choice([v for v in graph.V if v.color == -1])
 
         # Initial Strategies: 
@@ -168,23 +162,43 @@ class RandomPlayer:
         # your own color 
         # 2) Avoiding any isolated verticies and attempting to force the opponent to choose it
 
-    def ChooseVertexToRemove(graph, active_player):
+    def ChooseVertexToRemove(graph, active_player, b=0):
         return random.choice([v for v in graph.V if v.color == active_player])
 
         # Initial Strategies: 
         # 1) Erasing down the path instead of the middle of it (making sure that there
         # are no connections of the same color next to the vertex being erased)
 
+
 if __name__ == "__main__":
     # NOTE: we are not creating INSTANCES of these classes, we're defining the players
     # as the class itself. This lets us call the static methods.
     p1 = RandomPlayer
-    p2 = BestPlayer.ooshbot69
-    iters = 40
-    wins = PlayBenchmark(p1, p2, iters)
-    print(wins)
-    print(
-        "Player 1: {0} Player 2: {1}".format(
-            1.0 * wins[0] / sum(wins), 1.0 * wins[1] / sum(wins)
-        )
-    )
+    p2 = BestPlayer.PercolationPlayer
+    iters = 100
+    #a_b_vals = [[-0.25, 2], [-0.5, 0.9], [-3, 0.9], [-3, 2], [-5, 0.5], [-5, 0.9]]
+    a_b_vals = [[1, 2]]
+    a_vals = []
+    b_vals = []
+    for a in a_vals:
+        for b in b_vals:
+            a_b_vals.append([a, b])
+    for i in range(5):
+        for pair in a_b_vals:
+            a = pair[0]; b = pair[1]
+            print(a, b)
+            wins = PlayBenchmark(p1, p2, iters, a, b)
+            print(wins)
+            print(
+                "Player 1: {0} Player 2: {1}".format(
+                    1.0 * wins[0] / sum(wins), 1.0 * wins[1] / sum(wins)
+                )
+            )
+
+# -0.25, 2
+# -0.5, 0.9
+# -3, 0.9
+# -3, 2
+# -5, 0.5
+# -5, 0.9
+# -10, 0.9
