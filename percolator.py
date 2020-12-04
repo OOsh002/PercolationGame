@@ -20,7 +20,7 @@ class PercolationPlayer:
     # 2) Avoiding any isolated vertices and attempting to force the opponent to choose it
     def ChooseVertexToColor(graph, active_player, a=-3):
         start = time.time()
-        ours, not_ours, uncolored = ooshbot69.getColor(graph, active_player)
+        ours, not_ours, uncolored = PercolationPlayer.getColor(graph, active_player)
         scores = []                 # list of [vertex, score]; higher score is better
         if len(graph.V) < 15:
             a = -2
@@ -53,7 +53,7 @@ class PercolationPlayer:
     # Initial Strategies: 
     # 1) Choose the one that has the fewest number of connections to our vertices
     def ChooseVertexToRemove(graph, active_player, b=0.5):
-        ours, not_ours, uncolored = ooshbot69.getColor(graph, active_player)
+        ours, not_ours, uncolored = PercolationPlayer.getColor(graph, active_player)
         should_remove = False
         if len(ours) < len(not_ours):
             should_remove = True
@@ -103,5 +103,5 @@ class PercolationPlayer:
 # G = percolation.BinomialRandomGraph(k, p)
 # for v in G.V:
 #     print(v, G.Degree(v))
-# v = ooshbot69.ChooseVertexToColor(G, 2)
+# v = PercolationPlayer.ChooseVertexToColor(G, 2)
 # print(v)
