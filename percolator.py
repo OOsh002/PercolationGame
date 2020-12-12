@@ -10,13 +10,16 @@ class Edge:
     def __repr__(self):
         return "Edge({0}, {1})".format(self.a, self.b)
 
+def IncidentEdges(graph, v):
+    return [e for e in graph.E if (e.a == v or e.b == v)]
+
 # Returns the degree of the given vertex.
 def Degree(graph, v):
-    return len(graph.IncidentEdges(v))
+    return len(IncidentEdges(graph, v))
 
 # Returns all neighbors of the given vertex.
 def GetNeighbors(graph, v):
-    edges = graph.IncidentEdges(v)
+    edges = IncidentEdges(graph, v)
     return [u for u in graph.V if Edge(u, v) in edges or Edge(v, u) in edges]
 
 class PercolationPlayer:
@@ -69,7 +72,7 @@ class PercolationPlayer:
         b *= len(graph.V)
         scores = []
         for v in ours: 
-            connections = graph.IncidentEdges(v)
+            connections = IncidentEdges(graph, v)
             neighbors = [u for u in graph.V if Edge(u, v) in connections or Edge(v, u) in connections]
             friendly = len(list(filter(lambda x: x.a in ours and x.b in ours, connections)))
             opp = len(connections) - friendly

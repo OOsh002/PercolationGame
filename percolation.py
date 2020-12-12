@@ -1,13 +1,14 @@
 import random
 import itertools
 import copy
-import traceback
 import sys
+import traceback
+
+import time
+import signal
+import errno
 import percolator
 
-
-# modified random player class
-# modified the play method to pass in a and b
 class Vertex:
     def __init__(self, index, color=-1):
         self.index = index
@@ -37,28 +38,53 @@ class Graph:
     def __repr__(self):
         return "Graph({0}, {1})".format(self.V, self.E)
 
-    # Gets a vertex with given index if it exists, else return None.
-    def GetVertex(self, i):
-        for v in self.V:
-            if v.index == i:
-                return v
-        return None
+    def __deepcopy__(self, memo):
+        V = {v.index: Vertex(v.index, v.color) for v in self.V}
+        E = [Edge(V[e.a.index], V[e.b.index]) for e in self.E]
+        return Graph(V.values(), E)
 
-    # Returns the incident edges on a vertex.
-    def IncidentEdges(self, v):
-        return [e for e in self.E if (e.a == v or e.b == v)]
+### DO NOT RELY ON THESE METHODS IN YOUR CODE! THEY WILL NOT NECESSARILY EXIST! ###
+### THESE ARE BEING USED FOR DRIVER CODE ONLY ###
 
-    # Removes the given vertex v from the graph, as well as the edges attached to it.
-    # Removes all isolated vertices from the graph as well.
-    def Percolate(self, v):
-        # Get attached edges to this vertex, remove them.
-        for e in self.IncidentEdges(v):
-            self.E.remove(e)
-        # Remove this vertex.
-        self.V.remove(v)
-        # Remove all isolated vertices.
-        to_remove = {u for u in self.V if len(self.IncidentEdges(u)) == 0}
-        self.V.difference_update(to_remove)
+# Gets a vertex with given index if it exists, else return None.
+def GetVertex(graph, i):
+    for v in graph.V:
+        if v.index == i:
+            return v
+    return None
+
+# Returns the incident edges on a vertex.
+def IncidentEdges(graph, v):
+    return [e for e in graph.E if (e.a == v or e.b == v)]
+
+# modified random player class
+# modified the play method to pass in a and b
+# Removes the given vertex v from the graph, as well as the edges attached to it.
+# Removes all isolated vertices from the graph as well.
+def Percolate(graph, v):
+    # Get attached edges to this vertex, remove them.
+    for e in IncidentEdges(graph, v):
+        graph.E.remove(e)
+    # Remove this vertex.
+    graph.V.remove(v)
+    # Remove all isolated vertices.
+    to_remove = {u for u in graph.V if len(IncidentEdges(graph, u)) == 0}
+    graph.V.difference_update(to_remove)
+
+class TimeoutError(Exception):
+    pass
+
+class Timeout:
+    def __init__(self, seconds=0.5, error_message="Timeout of {0} seconds hit"):
+        self.seconds = seconds
+        self.error_message = error_message.format(seconds)
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, self.seconds)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
 
 
 # This is the main game loop.
@@ -70,13 +96,20 @@ def PlayGraph(s, t, graph):
     while any(v.color == -1 for v in graph.V):
         # First, try to just *run* the player's code to get their vertex.
         try:
-            chosen_vertex = players[active_player].ChooseVertexToColor(copy.copy(graph), active_player)
+            with Timeout():
+                chosen_vertex = players[active_player].ChooseVertexToColor(copy.deepcopy(graph), active_player)
+
+        # If user code does not return within appropriate timeout, select random action.
+        except TimeoutError as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+            chosen_vertex = RandomPlayer.ChooseVertexToColor(copy.deepcopy(graph), active_player)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             return 1 - active_player
         # Next, check that their output was reasonable.
         try:
-            original_vertex = graph.GetVertex(chosen_vertex.index)
+            original_vertex = GetVertex(graph, chosen_vertex.index)
             if not original_vertex:
                 return 1 - active_player
             if original_vertex.color != -1:
@@ -99,19 +132,26 @@ def PlayGraph(s, t, graph):
     while len([v for v in graph.V if v.color == active_player]) > 0:
         # First, try to just *run* the removal code.
         try:
-            chosen_vertex = players[active_player].ChooseVertexToRemove(copy.copy(graph), active_player)
+            with Timeout():
+                chosen_vertex = players[active_player].ChooseVertexToRemove(copy.deepcopy(graph), active_player)
+
+        # If user code does not return within appropriate timeout, select random action.
+        except TimeoutError as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+            chosen_vertex = RandomPlayer.ChooseVertexToRemove(copy.deepcopy(graph), active_player)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             return 1 - active_player
         # Next, check that their output was reasonable.
         try:
-            original_vertex = graph.GetVertex(chosen_vertex.index)
+            original_vertex = GetVertex(graph, chosen_vertex.index)
             if not original_vertex:
                 return 1 - active_player
             if original_vertex.color != active_player:
                 return 1 - active_player
             # If output is reasonable, remove ("percolate") this vertex + edges attached to it, as well as isolated vertices.
-            graph.Percolate(original_vertex)
+            Percolate(graph, original_vertex)
         # Only case when this should fire is if chosen_vertex.index does not exist or similar error.
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
@@ -134,7 +174,7 @@ def BinomialRandomGraph(k, p):
 # This method creates and plays a number of random graphs using both passed in players.
 def PlayBenchmark(p1, p2, iters):
     graphs = (
-        BinomialRandomGraph(random.randint(2, 20), random.random())
+        BinomialRandomGraph(random.randint(1, 20), random.random())
         for _ in range(iters)
     )
     wins = [0, 0]
@@ -147,6 +187,18 @@ def PlayBenchmark(p1, p2, iters):
         winner_b = PlayGraph(p2, p1, g2)
         wins[1-winner_b] += 1
     return wins
+
+
+# This is a player that plays a legal move at random.
+class RandomPlayer:
+    # These are "static methdods" - note there's no "self" parameter here.
+    # These methods are defined on the blueprint/class definition rather than
+    # any particular instance.
+    def ChooseVertexToColor(graph, active_player):
+        return random.choice([v for v in graph.V if v.color == -1])
+
+    def ChooseVertexToRemove(graph, active_player):
+        return random.choice([v for v in graph.V if v.color == active_player])
 
 
 # This is a player that plays a legal move at random.
@@ -176,25 +228,15 @@ if __name__ == "__main__":
     p1 = RandomPlayer
     p2 = percolator.PercolationPlayer
     iters = 100
-    #a_b_vals = [[-0.25, 2], [-0.5, 0.9], [-3, 0.9], [-3, 2], [-5, 0.5], [-5, 0.9]]
-    a_b_vals = [[1, 2]]
-    a_vals = []
-    b_vals = []
     winrates = []
-    for a in a_vals:
-        for b in b_vals:
-            a_b_vals.append([a, b])
     for i in range(5):
-        for pair in a_b_vals:
-            a = pair[0]; b = pair[1]
-            print(a, b)
-            wins = PlayBenchmark(p1, p2, iters)
-            print(wins)
-            print(
-                "Player 1: {0} Player 2: {1}".format(
-                    1.0 * wins[0] / sum(wins), 1.0 * wins[1] / sum(wins)
-                )
+        wins = PlayBenchmark(p1, p2, iters)
+        print(wins)
+        print(
+            "Player 1: {0} Player 2: {1}".format(
+                1.0 * wins[0] / sum(wins), 1.0 * wins[1] / sum(wins)
             )
+        )
         winrates.append(1.0 * wins[1] / sum(wins))
     print("Average: " + str(sum(winrates)/5))
 
